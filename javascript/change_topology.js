@@ -1,3 +1,9 @@
+/*
+*	remove_link
+*		function:
+*			remove link from displayed graph
+*			force graph to figure out how to deal with active and standby paths
+*/
 function remove_link() {
 	dict_optionEdge.forEach(option => {
 		var value = document.getElementById('rm_' + option.type).value
@@ -11,6 +17,12 @@ function remove_link() {
 	load_cy()
 }
 
+/*
+*	insert_link
+*		function:
+*			add link back to displayed graph
+*			force graph to figure out how to deal with active and standby paths
+*/
 function insert_link() {
 	dict_optionEdge.forEach(option => {
 		var value = document.getElementById('ins_' + option.type).value
@@ -25,6 +37,13 @@ function insert_link() {
 	load_cy()
 }
 
+/*
+*	reset_select
+*		input:
+*			select_id	string	id of select element
+*		function:
+*			set index of select element to first item in list
+*/
 function reset_select(select_id) {
 	dict_optionEdge.forEach(option => {
 		var remove = 'rm_' + option.type
