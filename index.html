@@ -1,0 +1,365 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>SDN Path Calculation Testing</title>
+	<!--
+		WARNING!!!
+			can be slow to load scripts from content delivery networks
+			try including them in folders instead
+	-->
+
+	<!--
+		use bootstrap for grid-based layout
+	-->
+	<!--<link rel="stylesheet" href="../stylesheet/bootstrap.min.css">-->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+	<link rel="stylesheet" href="stylesheet.css">
+
+	<!--
+		load files to generate graph contents
+	-->
+	<script type="text/javascript" src="resource/dict_option.js"></script>
+	<script type="text/javascript" src="resource/nodes.js"></script>
+	<script type="text/javascript" src="resource/edges.js"></script>
+	<!--
+		load files to generate graph display
+	-->
+	<script type="text/javascript" src="javascript/Graph.js"></script>
+	<script type="text/javascript" src="javascript/select_functions.js"></script>
+	<script type="text/javascript" src="javascript/load_cy.js"></script>
+	<script type="text/javascript" src="javascript/change_topology.js"></script>
+	<!--
+		details at the below link:
+		https://ivis-at-bilkent.github.io/cytoscape.js-fcose/
+	-->
+	<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+	<script src="https://unpkg.com/layout-base/layout-base.js"></script>
+	<script src="https://unpkg.com/cose-base/cose-base.js"></script>
+	<script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
+	<!--<script type="text/javascript" src="../api/cytoscape/cytoscape.min.js"></script>
+	<script type="text/javascript" src="../api/cytoscape/layout-base.js"></script>
+	<script type="text/javascript" src="../api/cytoscape/cose-base.js"></script>
+	<script type="text/javascript" src="../api/cytoscape/cytoscape-fcose.js"></script>-->
+
+	<!--
+		set size of graph
+	-->
+	<style>
+		#cy {
+			width: 100%;
+			height: 100%;
+			position: absolute;
+			top: 0px;
+			left: 0px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid h-100">
+		<!--
+			top of the page, the title and other things
+		-->
+		<div class="row header" style="height: 5%">
+			<div class="col-md-3">
+				<button onclick="toggleNav()" class="openbtn">
+					<h3>☰ Topology Controls</h3>
+				</button>
+			</div>
+			<div class="col-md-9">
+				<h2 style="text-align: center;">Demonstration of SDN Network</h2>
+			</div>
+		</div>
+		<!--
+			left of the page, the sidebar
+			allows viewing of certain paths and removal/adding of links
+		-->
+		<div class="row" style="height: 95%">
+			<div id="sidebar" class="col-md-3" style="background-color: black; color: white;">
+				<!--
+					display paths
+						select elements for active and standby paths
+						only one path is cisible at any one time
+				-->
+				<div class="row">
+					<div class="col-md-12">
+						<h4>Display Edge-to-Server Path</h4>
+					</div>
+				</div>
+				<!--
+					display active path
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="show_active">Active Path</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="show_active" style="width: 100%" onchange="load_cy(graph)">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					display standby path
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="show_standby">Standby Path</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="show_standby" style="width: 100%" onchange="load_cy(graph)">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					output when select is chosen
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<p id="display_pathText"></p>
+					</div>
+					<div class="col-sm-6" id="current_path">
+						<p id="display_pathValue"></p>
+					</div>
+				</div>
+				<!--
+					option to remove links to change paths
+						only one link can be removed or added at a time
+						graph reloads upon change
+				-->
+				<div class="row">
+					<div class="col-md-12">
+						<h4>Remove Links from Topology</h4>
+					</div>
+				</div>
+				<!--
+					removes links to Server
+						links to the node labeled "S"
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="rm_server">Server Links</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="rm_server" style="width: 100%" onchange="reset_select('rm_server')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					removes links to server adjacent nodes
+						links to the nodes labeled "s"
+						server adjacent is anything directly connected to the Server
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="rm_serverAdj">Server Adjacent Link</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="rm_serverAdj" style="width: 100%" onchange="reset_select('rm_serverAdj')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					removes links to intermediate nodes
+						links to the nodes labeled "n"
+						these nodes aren't directly connected to Edges or the Server
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="rm_med">Intermediate Link</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="rm_med" style="width: 100%" onchange="reset_select('rm_med')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					removes links to edge adjacent nodes
+						links to the nodes labeled "e"
+						these nodes are connected to Edges
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="rm_edgeAdj">Edge Adjacent Link</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="rm_edgeAdj" style="width: 100%" onchange="reset_select('rm_edgeAdj')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					enact changes to graph
+				-->
+				<div class="row">
+					<div class="col-sm-12">
+						<button style="width: 100%" onclick="remove_link()">remove selected link</button>
+					</div>
+				</div>
+				<!--
+					option to add links to change paths
+						only one link can be removed or added at a time
+						graph reloads upon change
+				-->
+				<div class="row">
+					<div class="col-md-12">
+						<h4>Insert Links to Topology</h4>
+					</div>
+				</div>
+				<!--
+					replaces links to Server
+						links to the node labeled "S"
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="ins_server">Server Links</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="ins_server" style="width: 100%" onchange="reset_select('ins_server')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					replaces links to server adjacent nodes
+						links to the nodes labeled "s"
+						server adjacent is anything directly connected to the Server
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="ins_serverAdj">Server Adjacent Link</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="ins_serverAdj" style="width: 100%" onchange="reset_select('ins_serverAdj')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					replaces links to intermediate nodes
+						links to the nodes labeled "n"
+						these nodes aren't directly connected to Edges or the Server
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="ins_med">Intermediate Link</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="ins_med" style="width: 100%" onchange="reset_select('ins_med')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					replaces links to edge adjacent nodes
+						links to the nodes labeled "e"
+						these nodes are connected to Edges
+				-->
+				<div class="row">
+					<div class="col-sm-6">
+						<label for="ins_edgeAdj">Edge Adjacent Link</label>
+					</div>
+					<div class="col-sm-6">
+						<select id="ins_edgeAdj" style="width: 100%" onchange="reset_select('ins_edgeAdj')">
+							<option value="">(no value selected)</option>
+						</select>
+					</div>
+				</div>
+				<!--
+					enact changes to graph
+				-->
+				<div class="row">
+					<div class="col-sm-12">
+						<button style="width: 100%" onclick="insert_link()">insert selected link</button>
+					</div>
+				</div>
+			</div>
+			<!--
+				right side of page
+				this is the graph that the user can look at
+			-->
+			<div id="main" class="col-md-9" style="background-color: FloralWhite;">
+				<div id="cy"></div>
+			</div>
+		</div>
+	</div>
+</body>
+
+<script>
+	/*
+	*	declare new graph based on nodes and edges
+	*	this graph is used to calculate paths
+	*/
+	var graph = new Graph(nodes, edges)
+	/*
+	*	add edges to options
+	*	allows edges to be added and removed
+	*	can only add or remove already existing edges
+	*/
+	edges.forEach(edge =>{
+		// see resource/edges.js for more information
+		var source = edge[0]
+		var target = edge[1]
+		var weight = edge[2]
+		/*
+		*	is_used is used to determine whether or not the node starts with prefix 'n-'
+		*	in other words, an intermediate node
+		*/
+		var is_used = false
+		/*
+		*	determine the type of the node
+		*		each node has an id, which is the key for the map in resource/nodes.js
+		*	first loop checks if the node is a Server, server-adjacent, edge-adjacent, or Edge
+		*	for given type, set applicable field in dict_optionEdge in resource/dict_options.js
+		*/
+		for(var i = 0; i<3; i++) {
+			if(nodes[source].type[i] == 1) {
+				dict_optionEdge[i].list_value.push(source + ' ' + target + ' ' + weight)
+				var text = source + ' to ' + target
+				dict_optionEdge[i].list_text.push(text)
+				is_used = true
+			}
+		}
+		/*
+		*	the below block runs if the node is an intermediary
+		*		refers to nodes that can freely be used for any path
+		*		all other nodes have some restriction in path calculations
+		*	sets applicable field in dict_optionEdge in resource/dict_options.js
+		*/
+		if(is_used == false && nodes[source].type.join('') == '0000') {
+			dict_optionEdge[3].list_value.push(source + ' ' + target + ' ' + weight)
+			var text = source + ' to ' + target
+			dict_optionEdge[3].list_text.push(text)
+		}
+	})
+	/*
+	*	fills out applicable options in sidebar
+	*	done one on startup only
+	*/
+	dict_optionEdge.forEach(option => {
+		addOption('rm_' + option.type, option.list_value, option.list_text)
+		addOption('ins_' + option.type, option.list_value, option.list_text)
+	})
+	for(var endpoint in graph.paths) {
+		dict_optionPath[0].list_text.push(endpoint + ' to Server')
+		dict_optionPath[0].list_value.push(endpoint)
+		dict_optionPath[1].list_text.push(endpoint + ' to Server')
+		dict_optionPath[1].list_value.push(endpoint)
+	}
+	dict_optionPath.forEach(option => {
+		addOption('show_' + option.type, option.list_value, option.list_text)
+	})
+	/*
+	*	displays initial graph
+	*	initial graph has no removed links
+	*/
+	load_cy(graph)
+</script>
+</html>
